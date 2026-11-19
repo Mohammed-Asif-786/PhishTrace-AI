@@ -1,0 +1,17 @@
+From: PayPal Security <service@paypa1.com>
+Return-Path: <bounce@mailer.example.net>
+Reply-To: support@paypa1-security.example
+To: customer@example.org
+Subject: Urgent: account suspended
+Message-ID: <classic@example.net>
+Date: Thu, 19 Nov 2026 21:05:54 +0000
+Authentication-Results: mx.example; spf=fail; dkim=fail; dmarc=fail
+Received: from mail.paypa1.com ([203.0.113.10]) by mx.example; Thu, 19 Nov
+ 2026 12:00:00 +0000
+Received: from relay.example ([8.8.8.8]) by mail.paypa1.com; Thu, 19 Nov 2026
+ 13:00:00 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+URGENT: verify your password immediately or your account will be suspended.

@@ -1,0 +1,9 @@
+From: PayPal <service@paypal-security.example>
+Return-Path: <bounce@attacker.example>
+Authentication-Results: mx.example; spf=fail; dmarc=fail
+Subject: Verify now
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Your account is suspended. Enter your password now.

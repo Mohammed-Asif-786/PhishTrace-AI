@@ -1,0 +1,9 @@
+From: Sender <sender@example.com>
+Subject: IPv6
+Received: from mail.example ([2001:4860:4860::8888]) by mx.example; Thu, 19
+ Nov 2026 12:00:00 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Normal message.
