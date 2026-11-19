@@ -1,6 +1,6 @@
 # PhishTrace AI
 
-I built this as a local Streamlit application for reviewing uploaded `.eml` files. Analysis stays on the machine. The only network operation is optional public-IP geolocation; the Hugging Face model may be downloaded once when first used.
+I built this as a Streamlit application for reviewing uploaded `.eml` files. Analysis stays local. Optional public-IP geolocation uses ipwho.is. The deployment build does not bundle the large Hugging Face/PyTorch model; in environments where those packages are not installed, rule-based and deterministic analysis remains available.
 
 ## Setup
 
@@ -13,6 +13,12 @@ python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
+For local Hugging Face inference, also install `transformers` and `torch`:
+
+```bash
+python -m pip install transformers==4.46.3 torch==2.5.1
+```
+
 Linux Mint users may need `python3-venv` and `python3-pip` installed through their package manager.
 
 ## Run tests
@@ -23,7 +29,7 @@ pytest -q
 
 ## Architecture
 
-`parser.py` extracts standard-library email headers and bodies, normalizes the Received chain, removes private IPs, and returns typed dataclasses. `classifier.py` loads the configured transformers model once and separately evaluates urgency, credential requests, suspension threats, shortened links, and link mismatches. `scoring.py` combines deterministic finding weights. `geo.py` caches ipwho.is responses on disk and handles failures as unresolved hops. `report.py` creates the HTML and JSON administrative report.
+`parser.py` extracts standard-library email headers and bodies, normalizes the Received chain, removes private IPs, and returns typed dataclasses. `classifier.py` optionally loads the configured transformers model and separately evaluates urgency, credential requests, suspension threats, shortened links, and link mismatches. `scoring.py` combines deterministic finding weights. `geo.py` caches ipwho.is responses on disk and handles failures as unresolved hops. `report.py` creates the HTML and JSON administrative report.
 
 ## Scoring
 
