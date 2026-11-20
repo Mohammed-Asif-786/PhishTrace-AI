@@ -52,7 +52,9 @@ def hop_map(geo_results: list) -> go.Figure:
 
 
 st.title("PhishTrace AI")
-uploaded = st.sidebar.file_uploader("Upload .eml file", type=["eml"])
+# Do not use Streamlit's type filter: mobile browsers often omit or misreport
+# the application/octet-stream or message/rfc822 MIME type for .eml files.
+uploaded = st.sidebar.file_uploader("Upload email file", accept_multiple_files=False)
 st.sidebar.markdown("### Model status")
 st.sidebar.write("Checked during analysis")
 st.sidebar.markdown("### Geolocation status")

@@ -65,7 +65,10 @@ class IpApiResponse:
         }
 
 
-def test_geo_lookup_falls_back_after_provider_failure():
+def test_geo_lookup_falls_back_after_provider_failure(tmp_path, monkeypatch):
+    import phishtrace.geo as geo
+    monkeypatch.setattr(geo, "CACHE_DIR", tmp_path)
+    geo._memory_cache.clear()
     session = Mock()
     session.get.side_effect = [FailingResponse(), IpApiResponse()]
     result = lookup_ip("4.2.2.2", session=session)
