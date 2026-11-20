@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass
+import ipaddress
 from pathlib import Path
 
 import requests
@@ -31,6 +32,7 @@ class GeoResult:
 
 
 _memory_cache: dict[str, GeoResult] = {}
+NEGATIVE_CACHE_TTL_SECONDS = 60 * 60
 
 
 def _cache_path(ip: str) -> Path:
@@ -47,6 +49,9 @@ def _read_cache(ip: str) -> GeoResult | None:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         result = GeoResult(**data)
+        age = time.time() - path.stat().st_mtime
+        if not result.resolved and age >= NEGATIVE_CACHE_TTL_SECONDS:
+            return None
         _memory_cache[ip] = result
         return result
     except (json.JSONDecodeError, OSError, TypeError):
@@ -65,6 +70,13 @@ def _write_cache(result: GeoResult) -> None:
 
 
 def lookup_ip(ip: str, timestamp: str = "", session: requests.Session | None = None) -> GeoResult:
+    try:
+        parsed_ip = ipaddress.ip_address(ip)
+    except ValueError:
+        return GeoResult(ip=ip, resolved=False, timestamp=timestamp)
+    if not parsed_ip.is_global:
+        return GeoResult(ip=ip, resolved=False, timestamp=timestamp)
+
     cached = _read_cache(ip)
     if cached:
         cached.timestamp = timestamp

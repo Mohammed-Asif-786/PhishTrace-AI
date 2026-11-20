@@ -148,8 +148,11 @@ with body_tab:
     else:
         st.info("No rule-based body signals were detected.")
 with map_tab:
-    if resolved_count == 0:
-        st.info("No resolved public hop locations are available.")
+    public_hops = [hop for hop in email.hops if hop.ip]
+    if not public_hops:
+        st.info("No public IP addresses were found in the Received headers. Private, local, and reserved addresses are not geolocated.")
+    elif resolved_count == 0:
+        st.warning("Public hops were found, but location lookup did not resolve them. This can happen if the geolocation service is temporarily unavailable.")
     else:
         st.plotly_chart(hop_map(geo_results), use_container_width=True)
 with report_tab:

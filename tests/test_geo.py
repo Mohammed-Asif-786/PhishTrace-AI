@@ -32,3 +32,10 @@ def test_geo_lookup_unreachable_is_unresolved():
     session.get.side_effect = requests.ConnectionError("offline")
     result = lookup_ip("1.1.1.1", session=session)
     assert not result.resolved
+
+
+def test_geo_lookup_rejects_private_address():
+    session = Mock()
+    result = lookup_ip("10.0.0.1", session=session)
+    assert not result.resolved
+    session.get.assert_not_called()
