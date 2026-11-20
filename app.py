@@ -55,16 +55,26 @@ st.title("PhishTrace AI")
 # Do not use Streamlit's type filter: mobile browsers often omit or misreport
 # the application/octet-stream or message/rfc822 MIME type for .eml files.
 uploaded = st.sidebar.file_uploader("Upload email file", accept_multiple_files=False)
+email_text = st.sidebar.text_area(
+    "Or paste the raw .eml content",
+    height=180,
+    placeholder="From: ...\nSubject: ...\n\nEmail body...",
+)
 st.sidebar.markdown("### Model status")
 st.sidebar.write("Checked during analysis")
 st.sidebar.markdown("### Geolocation status")
 st.sidebar.write("ipwho.is lookup enabled")
 
-if uploaded is None:
-    st.info("Upload an .eml file to begin analysis.")
+if uploaded is None and not email_text.strip():
+    st.info("Upload an .eml file or paste raw email content to begin analysis.")
     st.stop()
 
-file_bytes = uploaded.getvalue()
+if uploaded is not None:
+    file_bytes = uploaded.getvalue()
+    uploaded_name = uploaded.name
+else:
+    file_bytes = email_text.encode("utf-8")
+    uploaded_name = "pasted-email.eml"
 if not file_bytes:
     st.error("The uploaded file is empty.")
     st.stop()
@@ -112,7 +122,7 @@ with top[0]:
 with top[1]:
     st.markdown(f"<h2 style='color:{verdict_color(verdict)}'>{verdict} verdict</h2>",
                 unsafe_allow_html=True)
-    st.write(build_report_data(uploaded.name, file_bytes, email, classification,
+    st.write(build_report_data(uploaded_name, file_bytes, email, classification,
                                score, verdict, findings, geo_results,
                                ai_unavailable)["summary"]["reasoning"])
 
@@ -158,7 +168,7 @@ with map_tab:
     else:
         st.plotly_chart(hop_map(geo_results), use_container_width=True)
 with report_tab:
-    report = build_report_data(uploaded.name, file_bytes, email, classification,
+    report = build_report_data(uploaded_name, file_bytes, email, classification,
                                score, verdict, findings, geo_results,
                                ai_unavailable)
     st.subheader("Admin report")
