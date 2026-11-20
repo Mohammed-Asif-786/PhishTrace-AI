@@ -33,6 +33,12 @@ class GeoResult:
 
 _memory_cache: dict[str, GeoResult] = {}
 NEGATIVE_CACHE_TTL_SECONDS = 60 * 60
+GEOLOCATION_PROVIDERS = (
+    "https://ipwho.is/{ip}",
+    "https://get.geojs.io/v1/ip/geo/{ip}.json",
+    "https://ip-api.com/json/{ip}?fields=status,message,country,regionName,city,lat,lon,org,as,query",
+    "https://ipapi.co/{ip}/json/",
+)
 
 
 def _cache_path(ip: str) -> Path:
@@ -41,7 +47,7 @@ def _cache_path(ip: str) -> Path:
 
 
 def _read_cache(ip: str) -> GeoResult | None:
-    if ip in _memory_cache:
+    if ip in _memory_cache and _memory_cache[ip].resolved:
         return _memory_cache[ip]
     path = _cache_path(ip)
     if not path.exists():
@@ -82,33 +88,49 @@ def lookup_ip(ip: str, timestamp: str = "", session: requests.Session | None = N
         cached.timestamp = timestamp
         return cached
     http = session or requests
-    for attempt in range(GEOLOCATION_RETRIES + 1):
+    for provider in GEOLOCATION_PROVIDERS:
         try:
-            response = http.get(GEOLOCATION_URL.format(ip=ip), timeout=GEOLOCATION_TIMEOUT)
+            response = http.get(
+                provider.format(ip=ip),
+                timeout=GEOLOCATION_TIMEOUT,
+                headers={"User-Agent": "PhishTrace-AI/1.0"},
+            )
             response.raise_for_status()
             data = response.json()
-            if not data.get("success", True):
-                break
+            if data.get("success") is False or data.get("status") == "fail":
+                raise ValueError("geolocation provider returned no result")
+
             connection = data.get("connection") or {}
+            latitude = data.get("latitude", data.get("lat"))
+            longitude = data.get("longitude", data.get("lon"))
+            if latitude is not None:
+                latitude = float(latitude)
+            if longitude is not None:
+                longitude = float(longitude)
             result = GeoResult(
                 ip=ip,
                 resolved=True,
                 hostname=data.get("hostname") or "",
                 city=data.get("city") or "",
-                region=data.get("region") or "",
+                region=data.get("region") or data.get("regionName") or "",
                 country=data.get("country") or "",
-                latitude=data.get("latitude"),
-                longitude=data.get("longitude"),
-                asn=str(connection.get("asn") or data.get("asn") or ""),
-                org=connection.get("org") or data.get("org") or "",
+                latitude=latitude,
+                longitude=longitude,
+                asn=str(connection.get("asn") or data.get("asn") or data.get("as") or ""),
+                org=connection.get("org") or data.get("org") or data.get("isp") or data.get("organization_name") or "",
                 timestamp=timestamp,
             )
+            if result.latitude is None or result.longitude is None:
+                raise ValueError("geolocation provider returned no coordinates")
             _write_cache(result)
             return result
-        except (requests.RequestException, ValueError, KeyError) as exc:
-            LOGGER.warning("Geolocation lookup failed for %s: %s", ip, type(exc).__name__)
-            if attempt < GEOLOCATION_RETRIES:
-                time.sleep(0.1)
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            LOGGER.warning(
+                "Geolocation lookup failed for %s via %s: %s",
+                ip,
+                provider,
+                type(exc).__name__,
+            )
     unresolved = GeoResult(ip=ip, resolved=False, timestamp=timestamp)
     _write_cache(unresolved)
     return unresolved

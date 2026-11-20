@@ -39,3 +39,36 @@ def test_geo_lookup_rejects_private_address():
     result = lookup_ip("10.0.0.1", session=session)
     assert not result.resolved
     session.get.assert_not_called()
+
+
+class FailingResponse:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"success": False}
+
+
+class IpApiResponse:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {
+            "status": "success",
+            "country": "United States",
+            "regionName": "California",
+            "city": "San Francisco",
+            "lat": 37.7749,
+            "lon": -122.4194,
+            "org": "Test Network",
+        }
+
+
+def test_geo_lookup_falls_back_after_provider_failure():
+    session = Mock()
+    session.get.side_effect = [FailingResponse(), IpApiResponse()]
+    result = lookup_ip("4.2.2.2", session=session)
+    assert result.resolved
+    assert result.city == "San Francisco"
+    assert session.get.call_count == 2

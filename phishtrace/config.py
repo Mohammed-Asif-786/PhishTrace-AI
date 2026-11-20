@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 MODEL_NAME = "PhishTrace-Local-ML-v1"
 GEOLOCATION_URL = "https://ipwho.is/{ip}"
-GEOLOCATION_TIMEOUT = 3.0
+GEOLOCATION_TIMEOUT = 5.0
 GEOLOCATION_RETRIES = 1
 DNS_TIMEOUT = 3.0
 
