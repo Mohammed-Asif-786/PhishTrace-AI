@@ -31,3 +31,20 @@ def test_empty_body_is_unavailable():
     email = parse_email((FIXTURES / "empty.eml").read_bytes())
     result = classify_email(email)
     assert result.status == "unavailable"
+
+
+def test_local_classifier_marks_phishing_content_available():
+    email = parse_email((FIXTURES / "classic-phish.eml").read_bytes())
+    result = classify_email(email)
+    assert result.status == "available"
+    assert result.model_name == "PhishTrace-Local-ML-v1"
+    assert result.probability is not None
+    assert result.probability >= 0.8
+
+
+def test_local_classifier_marks_legitimate_content_available():
+    email = parse_email((FIXTURES / "legit.eml").read_bytes())
+    result = classify_email(email)
+    assert result.status == "available"
+    assert result.probability is not None
+    assert result.probability < 0.5

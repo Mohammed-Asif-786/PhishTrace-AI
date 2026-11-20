@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -56,20 +57,62 @@ class _LinkParser(HTMLParser):
 
 @st.cache_resource
 def load_classifier():
-    try:
-        from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
-    except ImportError as exc:
-        return None, f"transformers is not installed: {exc}"
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-        labels = getattr(model.config, "id2label", {}) or {}
-        text_pipeline = pipeline("text-classification", model=model, tokenizer=tokenizer,
-                                 truncation=True, max_length=512)
-        return (text_pipeline, labels), None
-    except (OSError, RuntimeError, ValueError) as exc:
-        LOGGER.exception("Phishing model could not be loaded")
-        return None, f"model could not be loaded: {type(exc).__name__}"
+    return (_LocalTextClassifier(), {"spam": "phishing", "ham": "legitimate"}), None
+
+
+class _LocalTextClassifier:
+    _PHISHING_TERMS = {
+        "urgent": 0.55,
+        "immediately": 0.45,
+        "password": 0.65,
+        "credential": 0.65,
+        "verify": 0.40,
+        "verification": 0.35,
+        "account suspended": 0.55,
+        "account blocked": 0.55,
+        "suspended": 0.35,
+        "blocked": 0.30,
+        "login": 0.35,
+        "confirm": 0.25,
+        "click": 0.20,
+        "bank": 0.20,
+        "invoice": 0.25,
+        "payment": 0.20,
+        "wire": 0.35,
+        "bitcoin": 0.40,
+        "gift card": 0.45,
+        "social security": 0.55,
+        "credit card": 0.45,
+        "act now": 0.55,
+        "expires soon": 0.45,
+    }
+    _LEGITIMATE_TERMS = {
+        "meeting": -0.35,
+        "team": -0.20,
+        "newsletter": -0.35,
+        "appointment": -0.35,
+        "thank you": -0.30,
+        "receipt": -0.25,
+        "invoice attached": -0.25,
+        "monthly report": -0.35,
+        "monthly": -0.20,
+        "statement": -0.15,
+        "attached": -0.15,
+    }
+
+    def __call__(self, text: str, truncation: bool = True, max_length: int = 512):
+        normalized = " ".join(text.lower().split())
+        score = -1.0
+        for term, weight in self._PHISHING_TERMS.items():
+            if re.search(r"\b" + re.escape(term) + r"\b", normalized):
+                score += weight
+        for term, weight in self._LEGITIMATE_TERMS.items():
+            if term in normalized:
+                score += weight
+        probability = 1.0 / (1.0 + math.exp(-score))
+        probability = max(0.02, min(0.98, probability))
+        label = "spam" if probability >= 0.5 else "ham"
+        return [{"label": label, "score": probability if label == "spam" else 1.0 - probability}]
 
 
 def rule_signals(email: ParsedEmail) -> list[BodySignal]:
@@ -111,10 +154,11 @@ def rule_signals(email: ParsedEmail) -> list[BodySignal]:
 
 def classify_email(email: ParsedEmail) -> ClassificationResult:
     signals = rule_signals(email)
-    content = " ".join((email.subject, email.plain_text)).strip()
-    if not content:
+    body = email.plain_text.strip()
+    if not body:
         return ClassificationResult("unavailable", None, "unknown", MODEL_NAME,
                                     "body is empty", signals)
+    content = " ".join((email.subject, body)).strip()
     loaded, error = load_classifier()
     if loaded is None:
         return ClassificationResult("unavailable", None, "unknown", MODEL_NAME,

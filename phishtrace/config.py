@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 
-MODEL_NAME = "spotproject/spot-distilbert-phishing"
+MODEL_NAME = "PhishTrace-Local-ML-v1"
 GEOLOCATION_URL = "https://ipwho.is/{ip}"
 GEOLOCATION_TIMEOUT = 3.0
 GEOLOCATION_RETRIES = 1
